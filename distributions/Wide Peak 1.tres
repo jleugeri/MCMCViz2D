@@ -1,0 +1,10 @@
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://c2wxg8s3k7px5"]
+
+[ext_resource type="Script" path="res://distributions/Gaussian.cs" id="1_isumc"]
+
+[resource]
+script = ExtResource("1_isumc")
+YScale = 1.0
+Transform = Transform2D(25, 2.08165e-12, 2.08165e-12, 5, 0.5, 2.08165e-12)
+MinCoords = Vector2(-1, -1)
+MaxCoords = Vector2(1, 1)

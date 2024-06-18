@@ -1,0 +1,12 @@
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://dhot3lw61f3s3"]
+
+[ext_resource type="Script" path="res://distributions/Banana.cs" id="1_lo33k"]
+
+[resource]
+script = ExtResource("1_lo33k")
+VarX = 0.2
+VarY = 0.05
+Bend = 1.0
+YScale = 0.21
+MinCoords = Vector2(-1, -1)
+MaxCoords = Vector2(1, 1)
