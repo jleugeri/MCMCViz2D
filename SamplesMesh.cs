@@ -26,6 +26,15 @@ public partial class SamplesMesh : MultiMeshInstance3D
         }
     }
 
+    private bool _visible = true;
+    new public bool Visible {
+        get { return _visible; }
+        set {
+            _visible = value;
+            Multimesh.VisibleInstanceCount = _visible ? _samples.Count : 0;
+        }
+    }
+
     public void Reset()
     {
         _samples.Clear();
@@ -48,7 +57,8 @@ public partial class SamplesMesh : MultiMeshInstance3D
             }
 
             _samples.Add(sample);
-            Multimesh.VisibleInstanceCount = _samples.Count;
+            if(_visible)
+                Multimesh.VisibleInstanceCount = _samples.Count;
         }
     }
 

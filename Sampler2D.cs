@@ -10,6 +10,7 @@ public partial class Sampler2D : Node3D
     private Tween YScaleTween;
     private Tween SpotlightTween;
 
+    private bool _mcmc = false;
     private double _rotationSpeed = 0.0;
     private bool _rotating = false;
     private bool _running = false;
@@ -23,9 +24,12 @@ public partial class Sampler2D : Node3D
 
     private OptionButton _distributionSelector;
     private CheckButton _rotateButton;
+    private CheckButton _MCMCButton;
     private Node3D _domain;
-    private SamplesMesh _samplesMesh;
+    private SamplesMesh _acceptedSamplesMesh;
+    private SamplesMesh _rejectedSamplesMesh;
     private HSlider _yScaleSlider;
+    private HSlider _radiusSlider;
 
     private Surface _surface;
 
@@ -71,8 +75,10 @@ public partial class Sampler2D : Node3D
             _yScale = value;
             if(_surface != null)
                 _surface.YScale = value;
-            if(_samplesMesh != null)
-                _samplesMesh.YScale = value;
+            if(_acceptedSamplesMesh != null)
+                _acceptedSamplesMesh.YScale = value;
+            if(_rejectedSamplesMesh != null)
+                _rejectedSamplesMesh.YScale = value;
         }
     }
 
@@ -81,11 +87,14 @@ public partial class Sampler2D : Node3D
 	{
         _domain = GetNode<Node3D>("%Domain");
         _surface = GetNode<Surface>("%Surface");
-        _samplesMesh = GetNode<SamplesMesh>("%Samples");
+        _acceptedSamplesMesh = GetNode<SamplesMesh>("%AcceptedSamples");
+        _rejectedSamplesMesh = GetNode<SamplesMesh>("%RejectedSamples");
         _camera = GetNode<Camera3D>("Camera");
         _yScaleSlider = GetNode<HSlider>("%YScale");
         _rotateButton = GetNode<CheckButton>("%Rotate");
         _distributionSelector = GetNode<OptionButton>("%Distribution");
+        _MCMCButton = GetNode<CheckButton>("%MCMC");
+        _radiusSlider = GetNode<HSlider>("%Radius");
 
         _surface.Distribution = Distribution;
         _surface.SamplingPosition = SamplingPosition;
@@ -124,7 +133,8 @@ public partial class Sampler2D : Node3D
             GD.Print("An error occurred when trying to access the path.");
         }
 
-        _samplesMesh.YScale = YScale;
+        _acceptedSamplesMesh.YScale = YScale;
+        _rejectedSamplesMesh.YScale = YScale;
         Reset();
 
         // Initialize to values selected in UI
@@ -135,7 +145,9 @@ public partial class Sampler2D : Node3D
         OnRunToggled(GetNode<Button>("%Run").ButtonPressed);
         OnDistributionSelected(_distributionSelector.Selected);
         OnYScaleValueChanged(_yScaleSlider.Value);
-        OnRadiusValueChanged(GetNode<HSlider>("%Radius").Value);
+        OnRadiusValueChanged(_radiusSlider.Value);
+        OnMCMCToggled(_MCMCButton.ButtonPressed);
+        OnShowRejectedToggled(GetNode<CheckButton>("%ShowRejected").ButtonPressed);
 	}
 
     private double _spawn = 0;
@@ -163,14 +175,32 @@ public partial class Sampler2D : Node3D
         SamplingStd = value;
     }
 
+    public void OnMCMCToggled(bool active) {
+        _mcmc = active;
+        _radiusSlider.Editable = active;
+        _radiusSlider.Visible = active;
+        GetNode<Label>("%RadiusLabel").Visible = active;
+        GetNode<CheckButton>("%Spotlight").Disabled = !active;
+        GetNode<CheckButton>("%Spotlight").Visible = active;
+
+        Reset();
+    }
+
     private void Next() {
         // Draw random point from sampling distribution (isotropic Gaussian) inside bounds
         Vector2 sample_pos;
         while(true) {
-            sample_pos = new Vector2(
-                (float)GD.Randfn(SamplingPosition.X, SamplingStd), 
-                (float)GD.Randfn(SamplingPosition.Y, SamplingStd)
-            );
+            if (_mcmc) {
+                sample_pos = new Vector2(
+                    (float)GD.Randfn(SamplingPosition.X, SamplingStd), 
+                    (float)GD.Randfn(SamplingPosition.Y, SamplingStd)
+                );
+            } else {
+                sample_pos = new Vector2(
+                    (float)GD.RandRange(_distribution.MinCoords.X, _distribution.MaxCoords.X),
+                    (float)GD.RandRange(_distribution.MinCoords.Y, _distribution.MaxCoords.Y)
+                );
+            }
 
             if (sample_pos.X >= _distribution.MinCoords.X && sample_pos.X <= _distribution.MaxCoords.X &&
                 sample_pos.Y >= _distribution.MinCoords.Y && sample_pos.Y <= _distribution.MaxCoords.Y) {
@@ -185,25 +215,42 @@ public partial class Sampler2D : Node3D
         var sample = new Sample(sample_pos, p, false);
         _samples.Add(sample);
 
-        // always accept first sample, otherwise accept with probability
-        if (_samples.Count == 1 || GD.Randf() < Mathf.Min(1.0f, p/_samples[^2].Probability)) {
-            sample.Accepted = true;
-            _numAccepted++;
-            
-            // Update sampling position for next sample
-            SamplingPosition = sample_pos;
+        if(_mcmc) {
+            // always accept first sample, otherwise accept with probability P_new/P_old
+            if (_samples.Count == 1 || GD.Randf() < p/_samples[^2].Probability) {
+                sample.Accepted = true;
+                _numAccepted++;
+                
+                // Update sampling position for next sample
+                SamplingPosition = sample_pos;
+            }
+        } else {
+            // always accept first sample, otherwise accept with probability P_new/(c*P_sample)
+            if (_samples.Count == 1 || GD.Randf() < p / _distribution.VMax) {
+                sample.Accepted = true;
+                _numAccepted++;
+            }
         }
 
         // Update samples mesh
-        _samplesMesh.AddSample(sample);
+        if (sample.Accepted)
+            _acceptedSamplesMesh.AddSample(sample);
+        else
+            _rejectedSamplesMesh.AddSample(sample);
     }
 
     private void Reset() {
-        // Draw random point in range of distribution
-        var x = (double)GD.RandRange(_distribution.MinCoords.X, _distribution.MaxCoords.X);
-        var y = (double)GD.RandRange(_distribution.MinCoords.Y, _distribution.MaxCoords.Y);
-        
-        SamplingPosition = new Vector2((float)x, (float)y);
+
+        if (!_mcmc) {
+            // Sample from the center
+            SamplingPosition = 0.5f * (_distribution.MaxCoords + _distribution.MinCoords);
+        } else {
+            // Draw random point in range of distribution
+            var x = (double)GD.RandRange(_distribution.MinCoords.X, _distribution.MaxCoords.X);
+            var y = (double)GD.RandRange(_distribution.MinCoords.Y, _distribution.MaxCoords.Y);
+            
+            SamplingPosition = new Vector2((float)x, (float)y);
+        }
 
         // reset the range of possible values
         _yrange = 0.5/Mathf.Max(Mathf.Abs(_distribution.VMin), Mathf.Abs(_distribution.VMax));
@@ -212,10 +259,12 @@ public partial class Sampler2D : Node3D
         _numAccepted = 0;
 
         // delete all samples
-        if (_samplesMesh != null)
+        if (_samples.Count > 0)
             _samples.Clear();
+        
         // clear the meshes
-        _samplesMesh?.Reset();
+        _acceptedSamplesMesh?.Reset();
+        _rejectedSamplesMesh?.Reset();
     }
 
     public void OnDistributionSelected(int index) {
@@ -235,6 +284,11 @@ public partial class Sampler2D : Node3D
         var dist = res as IDistribution2D;
         var new_yrange = 0.5/Mathf.Max(Mathf.Abs(dist.VMin), Mathf.Abs(dist.VMax));
         YScaleTween.TweenProperty(this, "YScale", _yScaleSlider.Value*new_yrange, 0.2f);
+    }
+
+    private void OnShowRejectedToggled(bool active) {
+        GD.Print("Show rejected", active);
+        _rejectedSamplesMesh.Visible = active;
     }
 
     private void OnYScaleValueChanged(double value) {
