@@ -180,6 +180,7 @@ public partial class Sampler2D : Node3D
         OnRunToggled(GetNode<Button>("%Run").ButtonPressed);
         OnYScaleValueChanged(_yScaleSlider.Value);
         OnShowRejectedToggled(GetNode<CheckButton>("%ShowRejected").ButtonPressed);
+        OnShowAcceptedToggled(GetNode<CheckButton>("%ShowAccepted").ButtonPressed);
         OnDistributionSelected(_distributionSelector.Selected);
         OnSamplerItemSelected(_samplerSelector.Selected);
 	}
@@ -299,6 +300,11 @@ public partial class Sampler2D : Node3D
     private void OnShowRejectedToggled(bool active) {
         GD.Print("Show rejected", active);
         _rejectedSamplesMesh.Visible = active;
+    }
+
+    private void OnShowAcceptedToggled(bool active) {
+        GD.Print("Show accepted", active);
+        _acceptedSamplesMesh.Visible = active;
     }
 
     private void OnYScaleValueChanged(double value) {

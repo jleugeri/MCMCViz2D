@@ -25,13 +25,18 @@ public partial class MCMCSampler : Resource, ISampler
 
     public IDistribution TargetDistribution { get; set; }
 
-    public void InitControls(HBoxContainer container)
+    public virtual void InitControls(HBoxContainer container)
     {
         // The only custom controls can come from the sampling distribution
         _samplingDistributionResource.InitControls(container);
     }
 
-    public Sample Next()
+    public virtual double P_accept(double P_new, double P_old, double P_old_to_new, double P_new_to_old)
+    {
+        return Mathf.Min(1.0, P_new_to_old/P_old_to_new * P_new/P_old);
+    }
+
+    public virtual Sample Next()
     {
         // alias variables
         var P_S_given_X = _samplingDistributionResource;    // P_{S|X}
@@ -55,7 +60,7 @@ public partial class MCMCSampler : Resource, ISampler
             var P_new_to_old = P_S_given_X.PDF(x);          // P_{S|X}(s -> x)
             
             // accept sample with probability P_{S|X}(s -> x)/P_{S|X}(x -> s) * P_X(s)/P_X(x)
-            sample.Accepted = GD.Randf() < /* P_new_to_old/P_old_to_new * */ P_new/P_old;
+            sample.Accepted = GD.Randf() < P_accept(P_new, P_old, P_old_to_new, P_new_to_old);
             sample.Probability = P_new;
         } 
         
@@ -70,7 +75,7 @@ public partial class MCMCSampler : Resource, ISampler
         return sample;
     }
 
-    public void Reset()
+    public virtual void Reset()
     {
         // reset last sample
         _lastSample = null;

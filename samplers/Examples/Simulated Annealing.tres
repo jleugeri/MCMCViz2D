@@ -1,0 +1,8 @@
+[gd_resource type="Resource" load_steps=3 format=3 uid="uid://bfcc270uecwak"]
+
+[ext_resource type="Resource" uid="uid://djsjr6unbfe88" path="res://distributions/Examples/Isotropic Gaussian.tres" id="1_rj6u4"]
+[ext_resource type="Script" path="res://samplers/SimulatedAnnealer.cs" id="2_tpklp"]
+
+[resource]
+script = ExtResource("2_tpklp")
+SamplingDistributionResource = ExtResource("1_rj6u4")
