@@ -20,7 +20,7 @@ public partial class Uniform2D : Resource, ICanSample
         }
     }
     
-    public double VMax => _inv_area;
+    public double PMax => _inv_area;
 
     private double[] _minCoords = new double[2]{-1, -1};
     [Export] public double[] MinCoords {
@@ -47,7 +47,12 @@ public partial class Uniform2D : Resource, ICanSample
 
     public double PDF(double[] x)
     {
-        return VMax;
+        return PMax;
+    }
+
+    public double Energy(double[] x)
+    {
+        return -Mathf.Log(PDF(x));
     }
 
     public Sample Sample()
@@ -57,7 +62,7 @@ public partial class Uniform2D : Resource, ICanSample
         x[1] = GD.RandRange(_minCoords[1], _maxCoords[1]);
         return new Sample(x, PDF(x), false);
     }
-    
+
     public void InitControls(HBoxContainer container)
     {
         // No controls

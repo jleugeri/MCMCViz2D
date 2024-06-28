@@ -11,12 +11,14 @@ public interface IDistribution
 
     public int DIM {get;}
 
-    public double VMax {get; }
+    public double PMax {get; }
 
     public double[] MinCoords {get;}
     public double[] MaxCoords {get;}
     public double PDF(double[] x);
-    
+
+    public double Energy(double[] x);
+
     // Initialize controls for the distribution
     public void InitControls(HBoxContainer container);
 }

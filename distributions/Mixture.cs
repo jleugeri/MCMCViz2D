@@ -84,7 +84,7 @@ public partial class Mixture : Resource, IDistribution
          }
     }
 
-    public double VMax => _distributions.Zip(_weights).Max(dw => dw.First.VMax*dw.Second);
+    public double PMax => _distributions.Zip(_weights).Max(dw => dw.First.PMax*dw.Second);
 
     public event DistributionChangedEventHandler DistributionChanged;
 
@@ -120,6 +120,11 @@ public partial class Mixture : Resource, IDistribution
         }
 
         return result;
+    }
+
+    public double Energy(double[] x)
+    {
+        return -Math.Log(PDF(x));
     }
 
     public void InitControls(HBoxContainer container)

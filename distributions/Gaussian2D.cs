@@ -8,7 +8,7 @@ public partial class Gaussian2D : Resource, ICanSample
     private double[,] _cov;
     private double[,] _chol;
     private double[,] _inv_chol;
-    private double _inv_partition;
+    private double _log_inv_partition;
     private double[] _origin;
 
     private Transform2D _transform;
@@ -47,7 +47,7 @@ public partial class Gaussian2D : Resource, ICanSample
 
             // compute inverse determinant of covariance matrix
             var det = _cov[0,0]*_cov[1,1]-_cov[0,1]*_cov[1,0];
-            _inv_partition = 1.0/Mathf.Sqrt(2*Mathf.Pi*det);
+            _log_inv_partition = -Mathf.Log(2*Mathf.Pi*det)*0.5;
 
             DistributionChanged?.Invoke();
         }
@@ -71,7 +71,7 @@ public partial class Gaussian2D : Resource, ICanSample
         }
     }
 
-    public double VMax => PDF(_origin);
+    public double PMax => PDF(_origin);
 
     public double[] Origin { 
         get => _origin;
@@ -87,6 +87,11 @@ public partial class Gaussian2D : Resource, ICanSample
 
     public double PDF(double[] x)
     {
+        return Mathf.Exp(-Energy(x));
+    }
+
+    public double Energy(double[] x)
+    {
         // compute transformed x
         var xy = new double[2]{x[0] - _origin[0], x[1] - _origin[1]};
 
@@ -94,7 +99,7 @@ public partial class Gaussian2D : Resource, ICanSample
         multiply_lower_trianglular_inplace(_inv_chol, xy);
 
         // compute trace
-        return Mathf.Exp(-(xy[0]*xy[0]+xy[1]*xy[1]))*_inv_partition;
+        return xy[0]*xy[0]+xy[1]*xy[1]-_log_inv_partition;
     }
 
     private void multiply_lower_trianglular_inplace(double[,] mat, double[] vec)

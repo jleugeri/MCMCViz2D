@@ -83,11 +83,11 @@ public partial class Sampler2D : Node3D
         set {
             _yScale = value;
             if(_surface != null)
-                _surface.YScale = value / _distribution.VMax;
+                _surface.YScale = value / _distribution.PMax;
             if(_acceptedSamplesMesh != null)
-                _acceptedSamplesMesh.YScale = value / _distribution.VMax;
+                _acceptedSamplesMesh.YScale = value / _distribution.PMax;
             if(_rejectedSamplesMesh != null)
-                _rejectedSamplesMesh.YScale = value / _distribution.VMax;
+                _rejectedSamplesMesh.YScale = value / _distribution.PMax;
         }
     }
 
@@ -232,7 +232,7 @@ public partial class Sampler2D : Node3D
 
         // // reset the range of possible values
         // if(_distribution != null)
-        //     _yrange = 0.5/_distribution.VMax;
+        //     _yrange = 0.5/_distribution.PMax;
 
         _numAccepted = 0;
 

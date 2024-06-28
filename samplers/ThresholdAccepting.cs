@@ -67,11 +67,8 @@ public partial class ThresholdAccepting : MCMCSampler
         _temperature = value;
     }
 
-    public override double P_accept(double P_new, double P_old, double P_old_to_new, double P_new_to_old)
+    public override double P_accept(double E_new, double E_old, double P_old_to_new, double P_new_to_old)
     {
-        var E_new = -Math.Log(P_new);
-        var E_old = -Math.Log(P_old);
-
         return (E_new - E_old) <= _temperature ? 1.0 : 0.0;
     }
 

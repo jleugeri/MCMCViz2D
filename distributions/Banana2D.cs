@@ -78,15 +78,20 @@ public partial class Banana2D : Resource, IDistribution
         }
     }
 
-    public double VMax { get => PDF(new double[2]{0.0f, -0.25f}); }
+    public double PMax { get => PDF(new double[2]{0.0f, -0.25f}); }
 
     public event DistributionChangedEventHandler DistributionChanged;
 
     public double PDF(double[] x)
     {
-        var p_x = Mathf.Exp(-Mathf.Pow(x[0]-_origin[0],2)/VarX);
-        var p_y_x = Mathf.Exp(-Mathf.Pow(x[1]-_origin[1]-Bend*Mathf.Pow(x[0]-_origin[0],2)+0.25,2)/VarY);
-        return p_x*p_y_x / Mathf.Sqrt(2*Mathf.Pi*VarX*VarY);
+        return Math.Exp(-Energy(x));
+    }
+
+    public double Energy(double[] x)
+    {
+        return Mathf.Pow(x[0]-_origin[0],2)/VarX 
+            + Mathf.Pow(x[1]-_origin[1]-Bend*Mathf.Pow(x[0]-_origin[0],2)+0.25,2)/VarY 
+            + 0.5*Mathf.Log(2*Mathf.Pi*VarX*VarY);
     }
 
     public void InitControls(HBoxContainer container)

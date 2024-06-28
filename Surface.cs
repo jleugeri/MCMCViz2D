@@ -161,7 +161,7 @@ public partial class Surface : MeshInstance3D
 				double y = j * res + y_min;
 
                 var z = dist.PDF(new double[2]{x + dist.Origin[0], y + dist.Origin[1]});
-                highlight[j,i] = (float)(z / dist.VMax);
+                highlight[j,i] = (float)(z / dist.PMax);
             }
         }
 
@@ -258,7 +258,7 @@ public partial class Surface : MeshInstance3D
 				uvs.Add(new Vector2((float)(i/(double)num_x_points), (float)(j/(double)num_y_points)));
 
                 // Compute color
-                colors.Add(new Color((float)(z / dist.VMax), 0, 0, 1.0f));
+                colors.Add(new Color((float)(z / dist.PMax), 0, 0, 1.0f));
 				
 				if(i>0 && j>0) {
 					
