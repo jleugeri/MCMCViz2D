@@ -3,93 +3,127 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-public partial class Mixture : Resource, IDistribution2D
+public partial class Mixture : Resource, IDistribution
 {
-    private List<IDistribution2D> _distributions = new List<IDistribution2D>();
+    private List<IDistribution> _distributions = new List<IDistribution>();
     [Export] public Godot.Collections.Array<Resource> Distributions {
         get { return new Godot.Collections.Array<Resource>(_distributions.Cast<Resource>()); }
         set {
-            _distributions = new List<IDistribution2D>();
+            _distributions = new List<IDistribution>();
             foreach (Resource res in value)
             {
-                _distributions.Add(res as IDistribution2D);
+                _distributions.Add(res as IDistribution);
             }
-            Init();
-        }
-    }
-
-    private List<double> _weights;
-
-    private double _yScale = 1.0f;
-    [Export] public double YScale {
-        get { return _yScale; }
-        set {
-            _yScale = value;
-
-            // update all distributions
-            int i=0;
-            foreach (IDistribution2D dist in Distributions.Cast<IDistribution2D>())
+            
+            foreach (var dist in _distributions)
             {
-                dist.YScale = _weights[i]*value;
-                i++;
+                // assert that all distributions have the same dimension
+                if (dist.DIM != DIM)
+                {
+                    throw new Exception("All distributions must have the same dimension");
+                }
+            }
+        }
+    }
+
+    public int DIM => _distributions[0].DIM;
+
+    private Godot.Collections.Array<double> _weights = new Godot.Collections.Array<double>();
+    [Export] public Godot.Collections.Array<double> Weights {
+        get { return _weights; }
+        set {
+            _weights = value;
+            
+            double weights_sum = 0.0;
+            foreach (var weight in _weights)
+            {
+                weights_sum += weight;
+            }
+
+            // normalize weights
+            for (int i = 0; i < _weights.Count; i++)
+            {
+                _weights[i] /= weights_sum;
             }
 
             DistributionChanged?.Invoke();
         }
     }
 
-    private Vector2 _minCoords = new Vector2(-1, -1);
-    [Export] public Vector2 MinCoords {
-        get { return _minCoords; }
-        set {
-            _minCoords = value;
-            DistributionChanged?.Invoke();
-        }
+    public double[] MinCoords {
+        get { 
+            var minCoords = new double[DIM];
+
+            // update min coords
+            foreach (var dist in _distributions)
+            {
+                for (int i = 0; i < DIM; i++)
+                {
+                    minCoords[i] = Math.Min(minCoords[i], dist.MinCoords[i]);
+                }
+            }
+
+            return minCoords;
+         }
     }
 
-    private Vector2 _maxCoords = new Vector2(1, 1);
-    [Export] public Vector2 MaxCoords {
-        get { return _maxCoords; }
-        set {
-            _maxCoords = value;
-            DistributionChanged?.Invoke();
-        }
+    public double[] MaxCoords {
+        get { 
+            var maxCoords = new double[DIM];
+
+            // update max coords
+            foreach (var dist in _distributions)
+            {
+                for (int i = 0; i < DIM; i++)
+                {
+                    maxCoords[i] = Math.Max(maxCoords[i], dist.MaxCoords[i]);
+                }
+            }
+
+            return maxCoords;
+         }
     }
 
-    public double VMax { get => _distributions.Max(d => d.VMax); }
-    public double VMin { get => _distributions.Min(d => d.VMin); }
+    public double VMax => _distributions.Zip(_weights).Max(dw => dw.First.VMax*dw.Second);
 
     public event DistributionChangedEventHandler DistributionChanged;
 
-    public void Init()
-    {
-        _weights = new List<double>();
-        double weights_sum = 0.0;
-        
-        // collect weights
-        foreach (var dist in _distributions)
-        {
-            _weights.Add(dist.YScale);
-            weights_sum += dist.YScale;
+    private double[] _origin = new double[2]{0.0f, 0.0f};
+    public double[] Origin { 
+        get => _origin;
+        set {
+            _origin = value;
+            DistributionChanged?.Invoke();
         }
-
-        // normalize weights
-        for (int i = 0; i < _weights.Count; i++)
-        {
-            _weights[i] /= weights_sum;
-        }
-
-        // Force update of all distributions
-        YScale = _yScale;
     }
 
-    public double PDF(double x, double y)
+    public double PDF(double[] x)
     {
         double result = 0.0f;
-        foreach (var dist in _distributions)
+
+        // move x to origin
+        var x_origin = new double[DIM];
+        for (int i = 0; i < DIM; i++)
         {
-            result += dist.PDF(x, y);
+            x_origin[i] = x[i] - Origin[i];
         }
+
+        // Assert that we have the same number of distributions and weights
+        if (_distributions.Count != _weights.Count)
+        {
+            throw new Exception("Number of distributions and weights must be the same but got " + _distributions.Count + " distributions and " + _weights.Count + " weights.");
+        }
+
+        for (int i=0; i<_distributions.Count; i++)
+        {
+            result += _weights[i]*_distributions[i].PDF(x_origin);
+        }
+
         return result;
+    }
+
+    public void InitControls(HBoxContainer container)
+    {
+        // No controls
     }
 }

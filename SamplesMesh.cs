@@ -47,7 +47,7 @@ public partial class SamplesMesh : MultiMeshInstance3D
             // Update new sample indicator
             Multimesh.SetInstanceTransform(
                 _samples.Count, 
-                new Transform3D(Basis.Identity, new Vector3(sample.Value.X, (float)(YScale*sample.Probability), sample.Value.Y))
+                new Transform3D(Basis.Identity, new Vector3((float)sample.Value[0], (float)(YScale*sample.Probability), (float)sample.Value[1]))
             );
 
             if (sample.Accepted) {

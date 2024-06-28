@@ -1,0 +1,9 @@
+[gd_resource type="Resource" load_steps=3 format=3 uid="uid://d0beoh8ls88gj"]
+
+[ext_resource type="Resource" uid="uid://cc0ixk54cj75i" path="res://distributions/Examples/Narrow Gaussian.tres" id="1_2pbk5"]
+[ext_resource type="Script" path="res://samplers/RejectionSampler.cs" id="2_vh10c"]
+
+[resource]
+script = ExtResource("2_vh10c")
+c = 4.0
+SamplingDistributionResource = ExtResource("1_2pbk5")

@@ -7,6 +7,4 @@
 [resource]
 script = ExtResource("1_7yjol")
 Distributions = Array[Resource]([ExtResource("1_4se3t"), ExtResource("2_deb2i")])
-YScale = 1.0
-MinCoords = Vector2(-1, -1)
-MaxCoords = Vector2(1, 1)
+Weights = [1.0, 1.0]

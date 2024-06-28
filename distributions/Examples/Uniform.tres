@@ -1,0 +1,9 @@
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://b3jjg4vvgm3b7"]
+
+[ext_resource type="Script" path="res://distributions/Uniform2D.cs" id="1_fcf70"]
+
+[resource]
+script = ExtResource("1_fcf70")
+YScale = 1.0
+MinCoords = PackedFloat64Array(-1, -1)
+MaxCoords = PackedFloat64Array(1, 1)

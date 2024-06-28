@@ -1,0 +1,9 @@
+[gd_resource type="Resource" load_steps=3 format=3 uid="uid://rmja4b8n8xt4"]
+
+[ext_resource type="Resource" uid="uid://b3jjg4vvgm3b7" path="res://distributions/Examples/Uniform.tres" id="1_akylu"]
+[ext_resource type="Script" path="res://samplers/RejectionSampler.cs" id="2_1xi3n"]
+
+[resource]
+script = ExtResource("2_1xi3n")
+c = 1.0
+SamplingDistributionResource = ExtResource("1_akylu")

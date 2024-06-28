@@ -1,0 +1,11 @@
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://djsjr6unbfe88"]
+
+[ext_resource type="Script" path="res://distributions/IsotropicGaussian2D.cs" id="1_xn8qt"]
+
+[resource]
+resource_local_to_scene = true
+script = ExtResource("1_xn8qt")
+StandardDeviation = 0.5
+Transform = Transform2D(0.25, 2.08165e-12, 2.08165e-12, 0.25, 2.08165e-12, 2.08165e-12)
+MinCoords = PackedFloat64Array(-1, -1)
+MaxCoords = PackedFloat64Array(1, 1)

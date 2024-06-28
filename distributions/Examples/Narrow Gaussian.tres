@@ -1,0 +1,9 @@
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://cc0ixk54cj75i"]
+
+[ext_resource type="Script" path="res://distributions/Gaussian2D.cs" id="1_7mi8j"]
+
+[resource]
+script = ExtResource("1_7mi8j")
+Transform = Transform2D(0.5, 0.1, 0.1, 0.1, 2.08165e-12, 2.08165e-12)
+MinCoords = PackedFloat64Array(-1, -1)
+MaxCoords = PackedFloat64Array(1, 1)

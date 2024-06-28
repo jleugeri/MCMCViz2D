@@ -6,23 +6,58 @@ public partial class Surface : MeshInstance3D
 {
 	private Godot.Collections.Array surfaceArray;
 
-    private IDistribution2D _distribution;
-    [Export] public Resource Distribution {
+
+    private ICanSample _samplingDistribution;
+    public ICanSample SamplingDistribution {
         get { 
-            return _distribution as Resource; 
+            return _samplingDistribution; 
         }
         set {
-            if (_distribution != null) {
-                _distribution.DistributionChanged -= OnDistributionChanged;
+            if (_samplingDistribution != null) {
+                _samplingDistribution.DistributionChanged -= OnSamplingDistributionChanged;
+                _samplingDistribution.OriginChanged -= OnSamplingOriginChanged;
             }
 
-            _distribution = value as IDistribution2D;
+            _samplingDistribution = value;
 
-            if (_distribution != null) {
-                _distribution.DistributionChanged += OnDistributionChanged;
+            if (_samplingDistribution != null) {
+                _samplingDistribution.DistributionChanged += OnSamplingDistributionChanged;
+                _samplingDistribution.OriginChanged += OnSamplingOriginChanged;
             }
 
-            RecomputeMesh();
+            OnSamplingDistributionChanged();
+        }
+    }
+
+    private void OnSamplingOriginChanged()
+    {
+        // GD.Print("Origin changed");
+        // Set origin in shader
+        var origin = new double[2];
+        for(int i=0; i<2; i++) {
+            origin[i] = (_samplingDistribution.Origin[i] - _samplingDistribution.MinCoords[i])/
+                (_samplingDistribution.MaxCoords[i] - _samplingDistribution.MinCoords[i]);
+        }
+        (MaterialOverride as ShaderMaterial).SetShaderParameter("highlightPosition", origin);
+    }
+
+    private IDistribution _targetDistribution;
+    public IDistribution TargetDistribution {
+        get { 
+            return _targetDistribution; 
+        }
+        set {
+            if (_targetDistribution != null) {
+                _targetDistribution.DistributionChanged -= OnTargetDistributionChanged;
+            }
+
+            _targetDistribution = value;
+
+            if (_targetDistribution != null) {
+                _targetDistribution.DistributionChanged += OnTargetDistributionChanged;
+            }
+
+            OnTargetDistributionChanged();
         }
     }
 
@@ -31,7 +66,7 @@ public partial class Surface : MeshInstance3D
         get { return _samplingPosition; }
         set {
             _samplingPosition = value;
-            if (_distribution != null)
+            if (_targetDistribution != null)
                 UpdateShader();
         }
     }
@@ -41,7 +76,7 @@ public partial class Surface : MeshInstance3D
         get { return _samplingStd; }
         set {
             _samplingStd = value;
-            if (_distribution != null)
+            if (_targetDistribution != null)
                UpdateShader();
         }
     }
@@ -51,18 +86,21 @@ public partial class Surface : MeshInstance3D
         get { return _fade; }
         set {
             _fade = value;
-            if (_distribution != null)
+            if (_targetDistribution != null)
                 UpdateShader();
         }
     }
 
     private void UpdateShader() {
-        var dims = _distribution.MaxCoords - _distribution.MinCoords;
+        var dims = new double[2]{
+            _targetDistribution.MaxCoords[0] - _targetDistribution.MinCoords[0], 
+            _targetDistribution.MaxCoords[1] - _targetDistribution.MinCoords[1]
+        };
 
         // Compute sample position in UV coordinates
         var posUV = new Vector2(
-            (_samplingPosition.X - _distribution.MinCoords.X) / dims.X,
-            (_samplingPosition.Y - _distribution.MinCoords.Y) / dims.Y
+            (float)((_samplingPosition[0] - _targetDistribution.MinCoords[0]) / dims[0]),
+            (float)((_samplingPosition[1] - _targetDistribution.MinCoords[1]) / dims[1])
         );
 
         (MaterialOverride as ShaderMaterial).SetShaderParameter("samplePos", posUV);
@@ -73,7 +111,7 @@ public partial class Surface : MeshInstance3D
         (MaterialOverride as ShaderMaterial).SetShaderParameter(
             "sampleInvCov", 
             new Vector2(
-                (float)Mathf.Pow(dims.X / _samplingStd, 2), (float)Mathf.Pow(dims.Y / _samplingStd, 2)
+                (float)Mathf.Pow(dims[0] / _samplingStd, 2), (float)Mathf.Pow(dims[1] / _samplingStd, 2)
             )
         );
     }
@@ -83,18 +121,62 @@ public partial class Surface : MeshInstance3D
         get { return _yScale; }
         set {
             _yScale = value;
-            if(_distribution != null)
-                RecomputeMesh();
+            if(_targetDistribution != null)
+                OnTargetDistributionChanged();
         }
     }
 
     [Export] public double res = 0.01f;
 
-    private void OnDistributionChanged() {
-        RecomputeMesh();
+
+    private bool _recomputeMesh = false;
+    private bool _recomputeHighlight = false;
+
+    private void OnTargetDistributionChanged() {
+        _recomputeMesh = true;
     }
 
-    private void RecomputeMesh() {
+    private void OnSamplingDistributionChanged() {
+        _recomputeHighlight = true;
+    }
+
+    private void RecomputeHighlight(ICanSample dist) {
+        _recomputeHighlight = false;
+
+        GD.Print("Recomputing highlight");
+
+        // compute number of points
+        double x_min = dist.MinCoords[0];
+        double x_max = dist.MaxCoords[0];
+        double y_min = dist.MinCoords[1];
+        double y_max = dist.MaxCoords[1];
+
+        int num_x_points = (int)Mathf.Ceil((x_max - x_min) / res);
+        int num_y_points = (int)Mathf.Ceil((y_max - y_min) / res);
+
+        var highlight = new float[num_x_points,num_y_points];
+		for(int i=0; i<num_x_points; i++) {
+			for(int j=0; j<num_y_points; j++) {
+				double x = i * res + x_min;
+				double y = j * res + y_min;
+
+                var z = dist.PDF(new double[2]{x + dist.Origin[0], y + dist.Origin[1]});
+                highlight[j,i] = (float)(z / dist.VMax);
+            }
+        }
+
+        var byteArray = new byte[highlight.Length * sizeof(float)];
+        Buffer.BlockCopy(highlight, 0, byteArray, 0, byteArray.Length);
+        
+        Image img = Image.CreateFromData(num_x_points, num_y_points, false, Image.Format.Rf, byteArray);
+        ImageTexture img_texture = ImageTexture.CreateFromImage(img);
+        
+        (MaterialOverride as ShaderMaterial).SetShaderParameter("highlightMap", img_texture);
+    }
+
+    private void RecomputeMesh(IDistribution dist) {
+        _recomputeMesh = false;
+
         GD.Print("Recomputing mesh");
 		surfaceArray = new Godot.Collections.Array();
 		surfaceArray.Resize((int)Mesh.ArrayType.Max);
@@ -105,10 +187,10 @@ public partial class Surface : MeshInstance3D
 		var indices = new List<int>();
         var colors = new List<Color>();
 
-        double x_min = _distribution.MinCoords.X;
-        double x_max = _distribution.MaxCoords.X;
-        double y_min = _distribution.MinCoords.Y;
-        double y_max = _distribution.MaxCoords.Y;
+        double x_min = dist.MinCoords[0];
+        double x_max = dist.MaxCoords[0];
+        double y_min = dist.MinCoords[1];
+        double y_max = dist.MaxCoords[1];
 
         int num_x_points = (int)Mathf.Ceil((x_max - x_min) / res);
         int num_y_points = (int)Mathf.Ceil((y_max - y_min) / res);
@@ -120,7 +202,7 @@ public partial class Surface : MeshInstance3D
 				double x = i * res + x_min;
 				double y = j * res + y_min;
 				
-				zs[i,j] = _distribution.PDF(x, y);
+				zs[i,j] = dist.PDF(new double[2]{x, y});
 			}
 		}
 
@@ -141,42 +223,42 @@ public partial class Surface : MeshInstance3D
                 _dy = 0.0f;
 
 				if(i>0) {
-					zx0 = zs[i-1,j];
+					zx0 = zs[i-1,j]*YScale;
                     _dx += res;
 				} else {
-					zx0 = z;
+					zx0 = z*YScale;
 				}
 
                 if(i<num_x_points-1) {
-                    zx1 = zs[i+1,j];
+                    zx1 = zs[i+1,j]*YScale;
                     _dx += res;
                 } else {
-                    zx1 = z;
+                    zx1 = z*YScale;
                 }
 
                 if(j>0) {
-                    zy0 = zs[i,j-1];
+                    zy0 = zs[i,j-1]*YScale;
                     _dy += res;
                 } else {
-                    zy0 = z;
+                    zy0 = z*YScale;
                 }
 
                 if(j<num_y_points-1) {
-                    zy1 = zs[i,j+1];
+                    zy1 = zs[i,j+1]*YScale;
                     _dy += res;
                 } else {
-                    zy1 = z;
+                    zy1 = z*YScale;
                 }
 
                 // Compute normal
-                var normal = new Vector3((float)((zx0-zx1)*YScale/_dx), 1.0f, (float)((zy0-zy1)*YScale/_dy)).Normalized();
+                var normal = new Vector3((float)((zx0-zx1)/_dx), 1.0f, (float)((zy0-zy1)/_dy)).Normalized();
 				normals.Add(normal);
 				
 				// Compute UVs
 				uvs.Add(new Vector2((float)(i/(double)num_x_points), (float)(j/(double)num_y_points)));
 
                 // Compute color
-                colors.Add(new Color((float)((z - _distribution.VMin) / (_distribution.VMax-_distribution.VMin)), 0, 0, 1.0f));
+                colors.Add(new Color((float)(z / dist.VMax), 0, 0, 1.0f));
 				
 				if(i>0 && j>0) {
 					
@@ -218,5 +300,14 @@ public partial class Surface : MeshInstance3D
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
 	public override void _Process(double delta)
 	{
+        if(_recomputeMesh) {
+            var dist = _targetDistribution;
+            RecomputeMesh(dist);
+        }
+
+        if(_recomputeHighlight) {
+            var dist = _samplingDistribution;
+            RecomputeHighlight(dist);
+        }
 	}
 }
