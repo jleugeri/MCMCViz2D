@@ -11,7 +11,11 @@ public interface IDistribution
 
     public int DIM {get;}
 
-    public double PMax {get; }
+    public double PMax { get; }
+    public double PMin { get; }
+
+    public double EMax { get; }
+    public double EMin { get; }
 
     public double[] MinCoords {get;}
     public double[] MaxCoords {get;}

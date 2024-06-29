@@ -5,6 +5,25 @@ using System.Collections.Generic;
 public partial class SamplesMesh : MultiMeshInstance3D
 {
 
+    private bool _showEnergy = false;
+    public bool ShowEnergy {
+        get { return _showEnergy; }
+        set {
+            _showEnergy = value;
+            
+            // move all samples to new height
+            for (int i = 0; i < _samples.Count; i++) {
+                var t = Multimesh.GetInstanceTransform(i);
+                t.Origin.Y = (float)(_showEnergy ? _yScale*_samples[i].Energy : _yScale*_samples[i].Probability);
+                // Update sample indicator
+                Multimesh.SetInstanceTransform(
+                    i, 
+                    t
+                );
+            }
+        }
+    }
+
     private List<Sample> _samples = new List<Sample>();
 
     private double _yScale = 1.0f;
@@ -16,7 +35,7 @@ public partial class SamplesMesh : MultiMeshInstance3D
             // move all samples to new height
             for (int i = 0; i < _samples.Count; i++) {
                 var t = Multimesh.GetInstanceTransform(i);
-                t.Origin.Y = (float)(_yScale*_samples[i].Probability);
+                t.Origin.Y = _showEnergy ? (float)(_yScale*_samples[i].Energy) : (float)(_yScale*_samples[i].Probability);
                 // Update sample indicator
                 Multimesh.SetInstanceTransform(
                     i, 
@@ -44,10 +63,12 @@ public partial class SamplesMesh : MultiMeshInstance3D
     public void AddSample(Sample sample)
     {
         if(_samples.Count < Multimesh.InstanceCount) {
+            var y = _showEnergy ? _yScale*sample.Energy : _yScale*sample.Probability;
+
             // Update new sample indicator
             Multimesh.SetInstanceTransform(
                 _samples.Count, 
-                new Transform3D(Basis.Identity, new Vector3((float)sample.Value[0], (float)(YScale*sample.Probability), (float)sample.Value[1]))
+                new Transform3D(Basis.Identity, new Vector3((float)sample.Value[0], (float)y, (float)sample.Value[1]))
             );
 
             if (sample.Accepted) {

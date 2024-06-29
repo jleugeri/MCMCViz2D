@@ -84,7 +84,6 @@ public partial class Mixture : Resource, IDistribution
          }
     }
 
-    public double PMax => _distributions.Zip(_weights).Max(dw => dw.First.PMax*dw.Second);
 
     public event DistributionChangedEventHandler DistributionChanged;
 
@@ -97,6 +96,13 @@ public partial class Mixture : Resource, IDistribution
         }
     }
 
+    // lazy option: just take the highest peaks of all the individual mixed distributions (not necessarily correct!)
+    public double PMax => _distributions.Zip(_weights).Max(dw => dw.First.PMax*dw.Second);
+    // lazy option: just take the lowest value of all the individual mixed distributions (not necessarily correct!)
+    public double PMin => _distributions.Zip(_weights).Min(dw => dw.First.PMin*dw.Second);
+
+    public double EMin => -Math.Log(PMax);
+    public double EMax => -Math.Log(PMin);
     public double PDF(double[] x)
     {
         double result = 0.0f;

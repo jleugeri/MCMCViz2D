@@ -82,12 +82,32 @@ public partial class Sampler2D : Node3D
         get { return _yScale; }
         set {
             _yScale = value;
+            var yrange = 1.0;
+            if(_distribution != null){
+                yrange = _showEnergy ? 1.0/(_distribution.EMax - _distribution.EMin) : 1.0/(_distribution.PMax - _distribution.PMin);
+                if (yrange == 0.0 || double.IsNaN(yrange) || double.IsInfinity(yrange))
+                    yrange = 1.0;
+            }
             if(_surface != null)
-                _surface.YScale = value / _distribution.PMax;
+                _surface.YScale = value * yrange ;
             if(_acceptedSamplesMesh != null)
-                _acceptedSamplesMesh.YScale = value / _distribution.PMax;
+                _acceptedSamplesMesh.YScale = value * yrange;
             if(_rejectedSamplesMesh != null)
-                _rejectedSamplesMesh.YScale = value / _distribution.PMax;
+                _rejectedSamplesMesh.YScale = value * yrange;
+        }
+    }
+
+    private bool _showEnergy = false;
+    public bool ShowEnergy {
+        get { return _showEnergy; }
+        set {
+            _showEnergy = value;
+            if(_surface != null)
+                _surface.ShowEnergy = value;
+            if(_acceptedSamplesMesh != null)
+                _acceptedSamplesMesh.ShowEnergy = value;
+            if(_rejectedSamplesMesh != null)
+                _rejectedSamplesMesh.ShowEnergy = value;
         }
     }
 
@@ -181,6 +201,7 @@ public partial class Sampler2D : Node3D
         OnYScaleValueChanged(_yScaleSlider.Value);
         OnShowRejectedToggled(GetNode<CheckButton>("%ShowRejected").ButtonPressed);
         OnShowAcceptedToggled(GetNode<CheckButton>("%ShowAccepted").ButtonPressed);
+        OnShowEnergyToggled(GetNode<CheckButton>("%ShowEnergy").ButtonPressed);
         OnDistributionSelected(_distributionSelector.Selected);
         OnSamplerItemSelected(_samplerSelector.Selected);
 	}
@@ -297,13 +318,23 @@ public partial class Sampler2D : Node3D
         dist.InitControls(ctrl);
     }
 
+    public void OnShowEnergyToggled(bool active) {
+        // Blend between the two views
+        YScaleTween?.Kill();
+        YScaleTween = GetTree().CreateTween();
+        YScaleTween.SetEase(Tween.EaseType.InOut);
+        YScaleTween.TweenProperty(this, "YScale", 0, 0.2f);
+        YScaleTween.TweenCallback(Callable.From(() => {
+            ShowEnergy = active;
+        }));
+        YScaleTween.TweenProperty(this, "YScale", _yScaleSlider.Value*_yrange, 0.2f);
+    }
+
     private void OnShowRejectedToggled(bool active) {
-        GD.Print("Show rejected", active);
         _rejectedSamplesMesh.Visible = active;
     }
 
     private void OnShowAcceptedToggled(bool active) {
-        GD.Print("Show accepted", active);
         _acceptedSamplesMesh.Visible = active;
     }
 

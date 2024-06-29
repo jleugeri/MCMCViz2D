@@ -78,7 +78,32 @@ public partial class Banana2D : Resource, IDistribution
         }
     }
 
-    public double PMax { get => PDF(new double[2]{0.0f, -0.25f}); }
+    public double PMax => Mathf.Exp(-EMin);
+
+    public double PMin => Mathf.Exp(-EMax);
+
+    public double EMax {
+        get {
+            double e_best = -Mathf.Inf;
+            // go through all corners of the range simplex and compute the energy there
+            for(int i=0; i<(1<<DIM); i++) {
+                // construct the corner
+                var corner = new double[DIM];
+                for(int j=0; j<DIM; j++) {
+                    corner[j] = ((i>>j) & 1) == 1 ? MinCoords[j] : MaxCoords[j];
+                }
+    
+                // compute the energy
+                var e = Energy(corner);
+                if(e > e_best) {
+                    e_best = e;
+                }
+            }
+            return e_best;
+        }
+    }
+
+    public double EMin => Energy(new double[2]{0.0f, -0.25f});
 
     public event DistributionChangedEventHandler DistributionChanged;
 

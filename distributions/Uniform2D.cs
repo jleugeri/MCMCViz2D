@@ -21,6 +21,10 @@ public partial class Uniform2D : Resource, ICanSample
     }
     
     public double PMax => _inv_area;
+    public double PMin => _inv_area;
+
+    public double EMax => -Mathf.Log(PMin);
+    public double EMin => -Mathf.Log(PMax);
 
     private double[] _minCoords = new double[2]{-1, -1};
     [Export] public double[] MinCoords {

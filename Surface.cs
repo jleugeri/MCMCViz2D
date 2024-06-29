@@ -6,6 +6,15 @@ public partial class Surface : MeshInstance3D
 {
 	private Godot.Collections.Array surfaceArray;
 
+    private bool _showEnergy = false;
+    public bool ShowEnergy {
+        get { return _showEnergy; }
+        set {
+            _showEnergy = value;
+            if(_targetDistribution != null)
+                OnTargetDistributionChanged();
+        }
+    }
 
     private ICanSample _samplingDistribution;
     public ICanSample SamplingDistribution {
@@ -31,7 +40,6 @@ public partial class Surface : MeshInstance3D
 
     private void OnSamplingOriginChanged()
     {
-        // GD.Print("Origin changed");
         // Set origin in shader
         var origin = new double[2];
         for(int i=0; i<2; i++) {
@@ -202,7 +210,7 @@ public partial class Surface : MeshInstance3D
 				double x = i * res + x_min;
 				double y = j * res + y_min;
 				
-				zs[i,j] = dist.PDF(new double[2]{x, y});
+				zs[i,j] = _showEnergy ? dist.Energy(new double[2]{x, y}) : dist.PDF(new double[2]{x, y});
 			}
 		}
 
@@ -258,7 +266,14 @@ public partial class Surface : MeshInstance3D
 				uvs.Add(new Vector2((float)(i/(double)num_x_points), (float)(j/(double)num_y_points)));
 
                 // Compute color
-                colors.Add(new Color((float)(z / dist.PMax), 0, 0, 1.0f));
+                double z_scaled;
+                if (_showEnergy) {
+                    z_scaled = 1-(z - dist.EMin) / (dist.EMax - dist.EMin);
+                } else {
+                    z_scaled = 1-(z - dist.PMin) / (dist.PMax - dist.PMin);
+                }
+                    
+                colors.Add(new Color((float)z_scaled, 0, 0, 1.0f));
 				
 				if(i>0 && j>0) {
 					
@@ -284,7 +299,6 @@ public partial class Surface : MeshInstance3D
 		var arrMesh = Mesh as ArrayMesh;
 		if (arrMesh != null)
 		{
-			GD.Print("DONE");
 			// Create mesh surface from mesh array
 			// No blendshapes, lods, or compression used.
             arrMesh.ClearSurfaces();
